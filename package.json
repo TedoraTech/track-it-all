@@ -1,0 +1,33 @@
+{
+  "name": "student-hub",
+  "version": "1.1.0",
+  "description": "Full Stack Community Platform for International Students",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "cd client && npm start",
+    "server": "cd server && npm run dev",
+    "build": "cd client && npm run build",
+    "install-client": "cd client && npm install",
+    "install-server": "cd server && npm install",
+    "install-all": "npm run install-client && npm run install-server"
+  },
+  "keywords": [
+    "react",
+    "nodejs",
+    "mongodb",
+    "student",
+    "community",
+    "visa",
+    "international"
+  ],
+  "author": "Gemini",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}
