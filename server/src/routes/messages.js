@@ -7,11 +7,6 @@ const { chatLimiter } = require('../middleware/rateLimiter');
 const uploadConfigs = require('../middleware/upload');
 const logger = require('../config/logger');
 
-/**
- * @route   GET /api/chats/:chatId/messages
- * @desc    Get messages for a chat
- * @access  Private (Members only)
- */
 router.get('/', authenticateToken, validatePagination, async (req, res) => {
   try {
     const { page = 1, limit = 50, before } = req.query;
@@ -245,11 +240,6 @@ router.post('/',
   }
 );
 
-/**
- * @route   PUT /api/chats/:chatId/messages/:messageId
- * @desc    Edit a message
- * @access  Private (Sender only, within time limit)
- */
 router.put('/:messageId', 
   authenticateToken, 
   validateUUID('messageId'),
@@ -336,11 +326,6 @@ router.put('/:messageId',
   }
 );
 
-/**
- * @route   DELETE /api/chats/:chatId/messages/:messageId
- * @desc    Delete a message
- * @access  Private (Sender or chat admin)
- */
 router.delete('/:messageId', 
   authenticateToken, 
   validateUUID('messageId'),
@@ -405,11 +390,6 @@ router.delete('/:messageId',
   }
 );
 
-/**
- * @route   POST /api/chats/:chatId/messages/mark-read
- * @desc    Mark messages as read
- * @access  Private (Members only)
- */
 router.post('/mark-read', authenticateToken, async (req, res) => {
   try {
     // Check if user is a member of the chat

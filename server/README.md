@@ -15,8 +15,7 @@ A comprehensive Node.js backend for the Student Hub application, providing RESTf
 ### Technical Features
 - **RESTful API Design** - Well-structured endpoints following REST principles
 - **Real-time Communication** - Socket.io for instant messaging and notifications
-- **Database Management** - PostgreSQL with Sequelize ORM
-- **Caching Layer** - Redis for session management and performance
+- **Database Management** - MongoDB with Mongoose ODM
 - **File Storage** - Flexible storage with local and cloud options
 - **Security** - Rate limiting, input validation, and security middleware
 - **Logging & Monitoring** - Comprehensive logging with Winston
@@ -26,8 +25,7 @@ A comprehensive Node.js backend for the Student Hub application, providing RESTf
 
 - **Runtime**: Node.js 18+
 - **Framework**: Express.js
-- **Database**: PostgreSQL with Sequelize ORM
-- **Cache**: Redis
+- **Database**: MongoDB with Mongoose ODM
 - **Real-time**: Socket.io
 - **Authentication**: JWT (jsonwebtoken)
 - **File Upload**: Multer with AWS S3 support
@@ -42,8 +40,7 @@ A comprehensive Node.js backend for the Student Hub application, providing RESTf
 Before running the application, ensure you have:
 
 - Node.js 18.0.0 or higher
-- PostgreSQL 12.0 or higher
-- Redis 6.0 or higher
+- MongoDB 5.0 or higher
 - npm or yarn package manager
 
 ## ⚡ Quick Start
@@ -78,17 +75,8 @@ CLIENT_URL=http://localhost:3000
 SERVER_URL=http://localhost:5000
 
 # Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
+MONGODB_URI=mongodb://localhost:27017/student_hub_dev
 DB_NAME=student_hub_dev
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
-DB_DIALECT=postgres
-
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
 
 # JWT Configuration
 JWT_SECRET=your_super_secret_jwt_key_here
@@ -120,12 +108,14 @@ SEED_DATABASE=true
 ### 3. Database Setup
 
 ```bash
-# Create database
-createdb student_hub_dev
+# MongoDB should be running
+# For local MongoDB installation:
+mongod
 
-# Run migrations (automatically done on first start in development)
-npm run migrate
+# Or using Docker:
+docker run -d -p 27017:27017 --name mongodb mongo:latest
 
+# Database will be created automatically on first connection
 # Seed database with sample data (optional)
 npm run seed
 ```
@@ -248,16 +238,15 @@ server/
 ├── src/
 │   ├── config/           # Configuration files
 │   │   ├── database.js   # Database configuration
-│   │   ├── logger.js     # Logging configuration
-│   │   └── redis.js      # Redis configuration
+│   │   └── logger.js     # Logging configuration
 │   ├── middleware/       # Express middleware
 │   │   ├── auth.js       # Authentication middleware
 │   │   ├── errorHandler.js  # Error handling
 │   │   ├── fileUpload.js # File upload handling
 │   │   ├── rateLimiter.js   # Rate limiting
 │   │   └── validation.js # Input validation
-│   ├── models/           # Sequelize models
-│   │   ├── index.js      # Model associations
+│   ├── models/           # Mongoose models
+│   │   ├── index.js      # Model exports
 │   │   ├── User.js       # User model
 │   │   ├── Post.js       # Post model
 │   │   ├── Chat.js       # Chat model
@@ -271,7 +260,6 @@ server/
 │   │   ├── emailService.js  # Email functionality
 │   │   ├── fileService.js   # File operations
 │   │   └── socketService.js # Socket.io management
-│   ├── migrations/       # Database migrations
 │   └── seeders/          # Database seeders
 ├── uploads/              # Local file storage
 ├── .env.example          # Environment template
@@ -304,12 +292,11 @@ npm run test:integration
 ### Production Setup
 
 1. **Environment Variables**: Update `.env` for production
-2. **Database**: Set up production PostgreSQL database
-3. **Redis**: Configure production Redis instance
-4. **File Storage**: Configure AWS S3 for file uploads
-5. **Email Service**: Set up production email service
-6. **SSL/TLS**: Configure HTTPS certificates
-7. **Process Management**: Use PM2 or similar for process management
+2. **Database**: Set up production MongoDB database
+3. **File Storage**: Configure AWS S3 for file uploads
+4. **Email Service**: Set up production email service
+5. **SSL/TLS**: Configure HTTPS certificates
+6. **Process Management**: Use PM2 or similar for process management
 
 ### Docker Deployment
 
@@ -341,34 +328,19 @@ npm run build
 
 ### Database Configuration
 
-The application uses Sequelize ORM with PostgreSQL. Configuration is in `src/config/database.js`:
+The application uses Mongoose ODM with MongoDB. Configuration is in `src/config/database.js`:
 
 ```javascript
 module.exports = {
   development: {
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: 'postgres',
-    logging: false,
+    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/student_hub_dev',
+    options: {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    }
   },
   // ... production config
-};
-```
-
-### Redis Configuration
-
-Redis is used for caching and session management:
-
-```javascript
-const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD,
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
 };
 ```
 

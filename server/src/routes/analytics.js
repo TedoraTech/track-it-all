@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
-const { VisaCase, VisaStatusUpdate, User } = require('../models');
+const { VisaCase, User } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { 
   validateCreateVisaCase, 
@@ -10,11 +9,6 @@ const {
 } = require('../middleware/validation');
 const logger = require('../config/logger');
 
-/**
- * @route   GET /api/analytics/visa
- * @desc    Get visa analytics and statistics
- * @access  Public (aggregated data only)
- */
 router.get('/visa', validatePagination, async (req, res) => {
   try {
     const { 
@@ -196,11 +190,6 @@ router.get('/visa', validatePagination, async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/analytics/visa/cases
- * @desc    Get user's visa cases
- * @access  Private
- */
 router.get('/visa/cases', authenticateToken, validatePagination, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
@@ -246,11 +235,6 @@ router.get('/visa/cases', authenticateToken, validatePagination, async (req, res
   }
 });
 
-/**
- * @route   POST /api/analytics/visa/cases
- * @desc    Create a new visa case
- * @access  Private
- */
 router.post('/visa/cases', authenticateToken, validateCreateVisaCase, async (req, res) => {
   try {
     const {
@@ -322,11 +306,6 @@ router.post('/visa/cases', authenticateToken, validateCreateVisaCase, async (req
   }
 });
 
-/**
- * @route   PUT /api/analytics/visa/cases/:id
- * @desc    Update a visa case
- * @access  Private (Owner only)
- */
 router.put('/visa/cases/:id', authenticateToken, validateUUID('id'), async (req, res) => {
   try {
     const visaCase = await VisaCase.findOne({
@@ -400,11 +379,6 @@ router.put('/visa/cases/:id', authenticateToken, validateUUID('id'), async (req,
   }
 });
 
-/**
- * @route   GET /api/analytics/visa/cases/:id/timeline
- * @desc    Get visa case timeline (status updates)
- * @access  Private (Owner only)
- */
 router.get('/visa/cases/:id/timeline', authenticateToken, validateUUID('id'), async (req, res) => {
   try {
     const visaCase = await VisaCase.findOne({
@@ -451,11 +425,6 @@ router.get('/visa/cases/:id/timeline', authenticateToken, validateUUID('id'), as
   }
 });
 
-/**
- * @route   DELETE /api/analytics/visa/cases/:id
- * @desc    Delete a visa case (soft delete)
- * @access  Private (Owner only)
- */
 router.delete('/visa/cases/:id', authenticateToken, validateUUID('id'), async (req, res) => {
   try {
     const visaCase = await VisaCase.findOne({

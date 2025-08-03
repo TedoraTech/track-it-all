@@ -1,159 +1,131 @@
-module.exports = (sequelize, DataTypes) => {
-  const Post = sequelize.define('Post', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [5, 200],
-      },
-    },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      validate: {
-        len: [10, 10000],
-      },
-    },
-    category: {
-      type: DataTypes.ENUM('Visa', 'Housing', 'Academic', 'Jobs', 'Social', 'General'),
-      allowNull: false,
-    },
-    university: {
-      type: DataTypes.STRING,
-      validate: {
-        len: [0, 100],
-      },
-    },
-    semester: {
-      type: DataTypes.ENUM('Fall', 'Spring', 'Summer'),
-    },
-    year: {
-      type: DataTypes.STRING,
-      validate: {
-        is: /^\\d{4}$/,
-      },
-    },
-    upvotes: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    downvotes: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    views: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    bookmarks: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    isHidden: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    isFeatured: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    isPinned: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    status: {
-      type: DataTypes.ENUM('active', 'archived', 'deleted'),
-      defaultValue: 'active',
-    },
-    userId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id',
-      },
-    },
-    metadata: {
-      type: DataTypes.JSONB,
-      defaultValue: {},
-    },
-  }, {
-    tableName: 'posts',
-    indexes: [
-      {
-        fields: ['category'],
-      },
-      {
-        fields: ['university'],
-      },
-      {
-        fields: ['user_id'],
-      },
-      {
-        fields: ['created_at'],
-      },
-      {
-        fields: ['upvotes'],
-      },
-      {
-        fields: ['views'],
-      },
-      {
-        fields: ['status'],
-      },
-      {
-        fields: ['title'],
-        type: 'gin',
-        using: 'gin',
-        operator: 'gin_trgm_ops',
-      },
-      {
-        fields: ['content'],
-        type: 'gin',
-        using: 'gin',
-        operator: 'gin_trgm_ops',
-      },
-    ],
-  });
+const mongoose = require('mongoose');
 
-  Post.associate = (models) => {
-    Post.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'author',
-    });
-    
-    Post.hasMany(models.PostReply, {
-      foreignKey: 'postId',
-      as: 'replies',
-    });
-    
-    Post.hasMany(models.PostVote, {
-      foreignKey: 'postId',
-      as: 'votes',
-    });
-    
-    Post.hasMany(models.FileUpload, {
-      foreignKey: 'postId',
-      as: 'attachments',
-    });
-    
-    Post.hasMany(models.Bookmark, {
-      foreignKey: 'postId',
-      as: 'userBookmarks',
-    });
-    
-    Post.belongsToMany(models.Tag, {
-      through: models.PostTag,
-      foreignKey: 'postId',
-      otherKey: 'tagId',
-      as: 'tags',
-    });
-  };
+const postSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: [true, 'Title is required'],
+    trim: true,
+    maxlength: [200, 'Title cannot be longer than 200 characters']
+  },
+  content: {
+    type: String,
+    required: [true, 'Content is required'],
+    trim: true
+  },
+  author: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Author is required']
+  },
+  category: {
+    type: String,
+    required: [true, 'Category is required'],
+    enum: [
+      'Study Groups',
+      'Study Resources', 
+      'Career Advice',
+      'Research',
+      'Student Life',
+      'Housing',
+      'Visa & Immigration',
+      'General Discussion',
+      'Q&A',
+      'Events'
+    ]
+  },
+  university: {
+    type: String,
+    trim: true
+  },
+  semester: {
+    type: String,
+    enum: ['Spring', 'Summer', 'Fall', 'Winter']
+  },
+  year: {
+    type: Number,
+    min: [2020, 'Year must be 2020 or later'],
+    max: [2030, 'Year must be 2030 or earlier']
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  attachments: [{
+    fileName: String,
+    originalName: String,
+    url: String,
+    size: Number,
+    mimeType: String
+  }],
+  upvotes: {
+    type: Number,
+    default: 0
+  },
+  downvotes: {
+    type: Number,
+    default: 0
+  },
+  viewCount: {
+    type: Number,
+    default: 0
+  },
+  replyCount: {
+    type: Number,
+    default: 0
+  },
+  isAnonymous: {
+    type: Boolean,
+    default: false
+  },
+  isPinned: {
+    type: Boolean,
+    default: false
+  },
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
+  hasAcceptedAnswer: {
+    type: Boolean,
+    default: false
+  },
+  lastActivityAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-  return Post;
-};
+// Virtual for total votes
+postSchema.virtual('totalVotes').get(function() {
+  return this.upvotes - this.downvotes;
+});
+
+// Indexes for better query performance
+postSchema.index({ author: 1 });
+postSchema.index({ category: 1 });
+postSchema.index({ university: 1 });
+postSchema.index({ tags: 1 });
+postSchema.index({ lastActivityAt: -1 });
+postSchema.index({ createdAt: -1 });
+postSchema.index({ isPinned: 1, lastActivityAt: -1 });
+
+// Text index for search functionality
+postSchema.index({ 
+  title: 'text', 
+  content: 'text', 
+  tags: 'text' 
+});
+
+// Pre-save middleware to update lastActivityAt
+postSchema.pre('save', function(next) {
+  if (this.isNew || this.isModified('content')) {
+    this.lastActivityAt = new Date();
+  }
+  next();
+});
+
+module.exports = mongoose.model('Post', postSchema);

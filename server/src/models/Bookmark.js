@@ -1,50 +1,33 @@
-module.exports = (sequelize, DataTypes) => {
-  const Bookmark = sequelize.define('Bookmark', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    userId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id',
-      },
-    },
-    postId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'posts',
-        key: 'id',
-      },
-    },
-  }, {
-    tableName: 'bookmarks',
-    indexes: [
-      {
-        fields: ['user_id', 'post_id'],
-        unique: true,
-      },
-      {
-        fields: ['post_id'],
-      },
-    ],
-  });
+const mongoose = require('mongoose');
 
-  Bookmark.associate = (models) => {
-    Bookmark.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'user',
-    });
-    
-    Bookmark.belongsTo(models.Post, {
-      foreignKey: 'postId',
-      as: 'post',
-    });
-  };
+const bookmarkSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'User is required']
+  },
+  post: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post',
+    required: [true, 'Post is required']
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  notes: {
+    type: String,
+    maxlength: [500, 'Notes cannot be longer than 500 characters']
+  }
+}, {
+  timestamps: true
+});
 
-  return Bookmark;
-};
+// Compound index to ensure unique bookmarks
+bookmarkSchema.index({ user: 1, post: 1 }, { unique: true });
+
+// Additional indexes
+bookmarkSchema.index({ user: 1, createdAt: -1 });
+bookmarkSchema.index({ tags: 1 });
+
+module.exports = mongoose.model('Bookmark', bookmarkSchema);

@@ -6,11 +6,6 @@ const { validateCreateReply, validateUUID, validatePagination } = require('../mi
 const uploadConfigs = require('../middleware/upload');
 const logger = require('../config/logger');
 
-/**
- * @route   GET /api/posts/:postId/replies
- * @desc    Get all replies for a post
- * @access  Public
- */
 router.get('/', validatePagination, optionalAuth, async (req, res) => {
   try {
     const { page = 1, limit = 50, sortBy = 'created_at', sortOrder = 'ASC' } = req.query;
@@ -111,11 +106,6 @@ router.get('/', validatePagination, optionalAuth, async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/posts/:postId/replies
- * @desc    Create a new reply to a post
- * @access  Private
- */
 router.post('/', 
   authenticateToken, 
   uploadConfigs.postAttachments,
@@ -220,11 +210,6 @@ router.post('/',
   }
 );
 
-/**
- * @route   PUT /api/posts/:postId/replies/:replyId
- * @desc    Update a reply
- * @access  Private (Author only)
- */
 router.put('/:replyId', 
   authenticateToken, 
   validateUUID('replyId'),
@@ -293,11 +278,6 @@ router.put('/:replyId',
   }
 );
 
-/**
- * @route   DELETE /api/posts/:postId/replies/:replyId
- * @desc    Delete a reply (soft delete)
- * @access  Private (Author only)
- */
 router.delete('/:replyId', 
   authenticateToken, 
   validateUUID('replyId'),
@@ -345,11 +325,6 @@ router.delete('/:replyId',
   }
 );
 
-/**
- * @route   POST /api/posts/:postId/replies/:replyId/vote
- * @desc    Vote on a reply (upvote/downvote)
- * @access  Private
- */
 router.post('/:replyId/vote', 
   authenticateToken, 
   validateUUID('replyId'),
@@ -433,11 +408,6 @@ router.post('/:replyId/vote',
   }
 );
 
-/**
- * @route   POST /api/posts/:postId/replies/:replyId/accept
- * @desc    Mark a reply as accepted answer
- * @access  Private (Post author only)
- */
 router.post('/:replyId/accept', 
   authenticateToken, 
   validateUUID('replyId'),

@@ -1,73 +1,74 @@
-module.exports = (sequelize, DataTypes) => {
-  const ChatMember = sequelize.define('ChatMember', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    role: {
-      type: DataTypes.ENUM('member', 'moderator', 'admin'),
-      defaultValue: 'member',
-    },
-    joinedAt: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    lastReadAt: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-    },
-    isMuted: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    chatId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'chats',
-        key: 'id',
-      },
-    },
-    userId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id',
-      },
-    },
-  }, {
-    tableName: 'chat_members',
-    indexes: [
-      {
-        fields: ['chat_id', 'user_id'],
-        unique: true,
-      },
-      {
-        fields: ['user_id'],
-      },
-      {
-        fields: ['chat_id'],
-      },
-    ],
-  });
+const mongoose = require('mongoose');
 
-  ChatMember.associate = (models) => {
-    ChatMember.belongsTo(models.Chat, {
-      foreignKey: 'chatId',
-      as: 'chat',
-    });
-    
-    ChatMember.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'user',
-    });
-  };
+const chatMemberSchema = new mongoose.Schema({
+  chat: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Chat',
+    required: [true, 'Chat is required']
+  },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'User is required']
+  },
+  role: {
+    type: String,
+    enum: ['owner', 'admin', 'moderator', 'member'],
+    default: 'member'
+  },
+  joinedAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastReadAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastReadMessage: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message'
+  },
+  isMuted: {
+    type: Boolean,
+    default: false
+  },
+  mutedUntil: {
+    type: Date
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  permissions: {
+    canSendMessages: { type: Boolean, default: true },
+    canUploadFiles: { type: Boolean, default: true },
+    canCreatePolls: { type: Boolean, default: true },
+    canMentionEveryone: { type: Boolean, default: false },
+    canDeleteOwnMessages: { type: Boolean, default: true },
+    canEditOwnMessages: { type: Boolean, default: true }
+  },
+  nickname: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Nickname cannot be longer than 50 characters']
+  }
+}, {
+  timestamps: true
+});
 
-  return ChatMember;
-};
+// Compound index to ensure unique user per chat
+chatMemberSchema.index({ chat: 1, user: 1 }, { unique: true });
+
+// Additional indexes
+chatMemberSchema.index({ user: 1 });
+chatMemberSchema.index({ role: 1 });
+chatMemberSchema.index({ isActive: 1 });
+chatMemberSchema.index({ joinedAt: -1 });
+
+// Virtual for unread message count
+chatMemberSchema.virtual('unreadCount').get(function() {
+  // This would be calculated dynamically in the application logic
+  return 0;
+});
+
+module.exports = mongoose.model('ChatMember', chatMemberSchema);

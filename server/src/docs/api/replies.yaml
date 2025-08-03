@@ -1,0 +1,335 @@
+openapi: 3.0.0
+paths:
+  /api/posts/{postId}/replies:
+    get:
+      summary: Get replies for a post
+      description: Retrieve all replies for a specific post with pagination
+      tags:
+        - Replies
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of replies per page
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, votes, accepted]
+            default: createdAt
+          description: Sort replies by field
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: ASC
+          description: Sort order
+      responses:
+        '200':
+          description: Replies retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      replies:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PostReply'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a reply to a post
+      description: Add a new reply to a specific post
+      tags:
+        - Replies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: Reply content
+                  example: "Great question! Here's what worked for me..."
+                parentReplyId:
+                  type: string
+                  description: Parent reply ID for nested replies
+      responses:
+        '201':
+          description: Reply created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Reply created successfully
+                  data:
+                    type: object
+                    properties:
+                      reply:
+                        $ref: '#/components/schemas/PostReply'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/posts/{postId}/replies/{id}:
+    put:
+      summary: Update a reply
+      description: Update an existing reply (author only)
+      tags:
+        - Replies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reply ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: Updated reply content
+      responses:
+        '200':
+          description: Reply updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Reply updated successfully
+                  data:
+                    type: object
+                    properties:
+                      reply:
+                        $ref: '#/components/schemas/PostReply'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    delete:
+      summary: Delete a reply
+      description: Delete a reply (soft delete, author or admin only)
+      tags:
+        - Replies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reply ID
+      responses:
+        '200':
+          description: Reply deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Reply deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/posts/{postId}/replies/{id}/vote:
+    post:
+      summary: Vote on a reply
+      description: Upvote or downvote a reply
+      tags:
+        - Replies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reply ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteRequest'
+      responses:
+        '200':
+          description: Vote processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Vote added
+                  data:
+                    type: object
+                    properties:
+                      action:
+                        type: string
+                        enum: [added, removed, updated]
+                      voteType:
+                        type: string
+                        enum: [upvote, downvote]
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/posts/{postId}/replies/{id}/accept:
+    post:
+      summary: Accept a reply as the answer
+      description: Mark a reply as the accepted answer (post author only)
+      tags:
+        - Replies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reply ID
+      responses:
+        '200':
+          description: Reply accepted as answer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Reply accepted as answer
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'

@@ -41,8 +41,9 @@ const passwordResetLimiter = rateLimit({
 const uploadSpeedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 2, // Allow 2 requests per 15 minutes at full speed
-  delayMs: 500, // Add 500ms delay per request after delayAfter
+  delayMs: () => 500, // Add 500ms delay per request after delayAfter
   maxDelayMs: 20000, // Maximum delay of 20 seconds
+  validate: { delayMs: false } // Disable the warning
 });
 
 // Rate limiting for chat messages

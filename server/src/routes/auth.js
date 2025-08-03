@@ -9,7 +9,6 @@ const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimiter
 const { validateRegister, validateLogin } = require('../middleware/validation');
 const logger = require('../config/logger');
 
-// Generate JWT tokens
 const generateTokens = (userId) => {
   const accessToken = jwt.sign(
     { userId },
@@ -26,11 +25,7 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
-/**
- * @route   POST /api/auth/register
- * @desc    Register a new user
- * @access  Public
- */
+// Register a new user
 router.post('/register', authLimiter, validateRegister, async (req, res) => {
   try {
     const {
@@ -45,8 +40,7 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
       visaStatus,
     } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -54,7 +48,6 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
       });
     }
 
-    // Create new user
     const user = await User.create({
       email,
       password,
@@ -67,10 +60,7 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
       visaStatus,
     });
 
-    // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user.id);
-
-    // Save refresh token to user
     await user.update({ refreshToken });
 
     logger.info(`New user registered: ${email}`);
@@ -94,17 +84,12 @@ router.post('/register', authLimiter, validateRegister, async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/auth/login
- * @desc    Authenticate user and get token
- * @access  Public
- */
+// Login user and get tokens
 router.post('/login', authLimiter, validateLogin, async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -112,7 +97,6 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       });
     }
 
-    // Check if user is active
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
@@ -120,7 +104,6 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       });
     }
 
-    // Validate password
     const isValidPassword = await user.validatePassword(password);
     if (!isValidPassword) {
       return res.status(401).json({
@@ -129,10 +112,8 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
       });
     }
 
-    // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user.id);
 
-    // Update user's last login and refresh token
     await user.update({
       lastLoginAt: new Date(),
       refreshToken: rememberMe ? refreshToken : null,
@@ -159,11 +140,7 @@ router.post('/login', authLimiter, validateLogin, async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/auth/refresh
- * @desc    Refresh access token
- * @access  Public
- */
+// Refresh access token
 router.post('/refresh', async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -175,16 +152,12 @@ router.post('/refresh', async (req, res) => {
       });
     }
 
-    // Verify refresh token
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     
-    // Find user and verify refresh token matches
     const user = await User.findOne({
-      where: { 
-        id: decoded.userId,
-        refreshToken,
-        isActive: true,
-      },
+      _id: decoded.userId,
+      refreshToken,
+      isActive: true,
     });
 
     if (!user) {
@@ -194,10 +167,8 @@ router.post('/refresh', async (req, res) => {
       });
     }
 
-    // Generate new tokens
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(user.id);
 
-    // Update refresh token
     await user.update({ refreshToken: newRefreshToken });
 
     res.json({
@@ -216,21 +187,17 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/auth/logout
- * @desc    Logout user and invalidate refresh token
- * @access  Private
- */
+// Logout user and invalidate refresh token
 router.post('/logout', authenticateToken, async (req, res) => {
   try {
-    // Clear refresh token
-    await req.user.update({ refreshToken: null });
-
-    logger.info(`User logged out: ${req.user.email}`);
+    await User.update(
+      { refreshToken: null },
+      { where: { _id: req.user.id } }
+    );
 
     res.json({
       success: true,
-      message: 'Logout successful',
+      message: 'Logged out successfully',
     });
   } catch (error) {
     logger.error('Logout error:', error);
@@ -241,11 +208,7 @@ router.post('/logout', authenticateToken, async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/auth/me
- * @desc    Get current user profile
- * @access  Private
- */
+// Get current user profile
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     res.json({
@@ -263,11 +226,7 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
-/**
- * @route   PUT /api/auth/profile
- * @desc    Update user profile
- * @access  Private
- */
+// Update user profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
     const {
@@ -314,11 +273,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/auth/change-password
- * @desc    Change user password
- * @access  Private
- */
+// Change user password
 router.post('/change-password', authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -337,7 +292,6 @@ router.post('/change-password', authenticateToken, async (req, res) => {
       });
     }
 
-    // Verify current password
     const isValidPassword = await req.user.validatePassword(currentPassword);
     if (!isValidPassword) {
       return res.status(400).json({
@@ -346,10 +300,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
       });
     }
 
-    // Update password
     await req.user.update({ password: newPassword });
-
-    // Clear all refresh tokens to force re-login
     await req.user.update({ refreshToken: null });
 
     logger.info(`Password changed for user: ${req.user.email}`);
@@ -367,11 +318,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/auth/forgot-password
- * @desc    Send password reset email
- * @access  Public
- */
+// Send password reset email
 router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body;
@@ -383,27 +330,21 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ email });
     if (!user) {
-      // Don't reveal if email exists or not
       return res.json({
         success: true,
         message: 'If an account with that email exists, a password reset link has been sent',
       });
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
     await user.update({
       passwordResetToken: resetToken,
       passwordResetExpires: resetTokenExpiry,
     });
-
-    // TODO: Send email with reset link
-    // const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-    // await sendPasswordResetEmail(user.email, resetUrl);
 
     logger.info(`Password reset requested for: ${email}`);
 
@@ -420,11 +361,7 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/auth/reset-password
- * @desc    Reset password using token
- * @access  Public
- */
+// Reset password using token
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -444,11 +381,9 @@ router.post('/reset-password', async (req, res) => {
     }
 
     const user = await User.findOne({
-      where: {
-        passwordResetToken: token,
-        passwordResetExpires: {
-          [require('sequelize').Op.gt]: new Date(),
-        },
+      passwordResetToken: token,
+      passwordResetExpires: {
+        $gt: new Date(),
       },
     });
 
@@ -459,12 +394,11 @@ router.post('/reset-password', async (req, res) => {
       });
     }
 
-    // Update password and clear reset token
     await user.update({
       password: newPassword,
       passwordResetToken: null,
       passwordResetExpires: null,
-      refreshToken: null, // Clear refresh token to force re-login
+      refreshToken: null,
     });
 
     logger.info(`Password reset successful for: ${user.email}`);

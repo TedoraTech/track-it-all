@@ -1,94 +1,85 @@
-module.exports = (sequelize, DataTypes) => {
-  const University = sequelize.define('University', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        len: [2, 100],
-      },
-    },
-    shortName: {
-      type: DataTypes.STRING,
-      validate: {
-        len: [1, 20],
-      },
-    },
-    country: {
-      type: DataTypes.STRING,
-      defaultValue: 'United States',
-      validate: {
-        len: [2, 50],
-      },
-    },
-    state: {
-      type: DataTypes.STRING,
-      validate: {
-        len: [2, 50],
-      },
-    },
-    city: {
-      type: DataTypes.STRING,
-      validate: {
-        len: [2, 50],
-      },
-    },
-    website: {
-      type: DataTypes.STRING,
-      validate: {
-        isUrl: true,
-      },
-    },
-    logoUrl: {
-      type: DataTypes.STRING,
-      validate: {
-        isUrl: true,
-      },
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-    },
-    studentCount: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    metadata: {
-      type: DataTypes.JSONB,
-      defaultValue: {},
-    },
-  }, {
-    tableName: 'universities',
-    indexes: [
-      {
-        fields: ['name'],
-        unique: true,
-      },
-      {
-        fields: ['country'],
-      },
-      {
-        fields: ['state'],
-      },
-      {
-        fields: ['is_active'],
-      },
-    ],
-  });
+const mongoose = require('mongoose');
 
-  University.associate = (models) => {
-    // Universities can have many students (users)
-    University.hasMany(models.User, {
-      foreignKey: 'university',
-      sourceKey: 'name',
-      as: 'students',
-    });
-  };
+const universitySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'University name is required'],
+    unique: true,
+    trim: true
+  },
+  code: {
+    type: String,
+    required: [true, 'University code is required'],
+    unique: true,
+    uppercase: true,
+    trim: true
+  },
+  country: {
+    type: String,
+    required: [true, 'Country is required'],
+    trim: true
+  },
+  state: {
+    type: String,
+    trim: true
+  },
+  city: {
+    type: String,
+    required: [true, 'City is required'],
+    trim: true
+  },
+  website: {
+    type: String,
+    trim: true,
+    match: [
+      /^https?:\/\/.+/,
+      'Please provide a valid website URL'
+    ]
+  },
+  logo: {
+    type: String,
+    trim: true
+  },
+  description: {
+    type: String,
+    maxlength: [1000, 'Description cannot be longer than 1000 characters']
+  },
+  ranking: {
+    world: Number,
+    national: Number,
+    subject: [{
+      field: String,
+      rank: Number,
+      year: Number
+    }]
+  },
+  statistics: {
+    totalStudents: Number,
+    internationalStudents: Number,
+    facultyCount: Number,
+    establishedYear: Number
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  timezone: {
+    type: String,
+    default: 'UTC'
+  },
+  contactInfo: {
+    email: String,
+    phone: String,
+    address: String
+  }
+}, {
+  timestamps: true
+});
 
-  return University;
-};
+// Indexes for better query performance
+universitySchema.index({ name: 'text' });
+universitySchema.index({ country: 1 });
+universitySchema.index({ isActive: 1 });
+// Note: code index is automatically created due to unique: true
+
+module.exports = mongoose.model('University', universitySchema);

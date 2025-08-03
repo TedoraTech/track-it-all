@@ -9,8 +9,8 @@ const fs = require('fs');
 // Import configurations
 require('dotenv').config();
 const logger = require('./src/config/logger');
-const { connectRedis } = require('./src/config/redis');
 const { connectDB } = require('./src/config/database');
+const SwaggerConfig = require('./src/config/swagger');
 
 // Import middleware
 const { apiLimiter } = require('./src/middleware/rateLimiter');
@@ -89,6 +89,20 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Rate limiting
 app.use('/api', apiLimiter);
 
+// API routes
+const apiPrefix = process.env.API_PREFIX || '/api';
+
+app.use(`${apiPrefix}/auth`, authRoutes);
+app.use(`${apiPrefix}/posts`, postRoutes);
+app.use(`${apiPrefix}/posts/:postId/replies`, replyRoutes);
+app.use(`${apiPrefix}/chats`, chatRoutes);
+app.use(`${apiPrefix}/chats/:chatId/messages`, messageRoutes);
+app.use(`${apiPrefix}/analytics`, analyticsRoutes);
+
+// Setup Swagger documentation from YAML files
+const swaggerConfig = new SwaggerConfig();
+swaggerConfig.setupSwaggerUI(app);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -100,84 +114,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
-const apiPrefix = process.env.API_PREFIX || '/api';
-
-app.use(`${apiPrefix}/auth`, authRoutes);
-app.use(`${apiPrefix}/posts`, postRoutes);
-app.use(`${apiPrefix}/posts/:postId/replies`, replyRoutes);
-app.use(`${apiPrefix}/chats`, chatRoutes);
-app.use(`${apiPrefix}/chats/:chatId/messages`, messageRoutes);
-app.use(`${apiPrefix}/analytics`, analyticsRoutes);
-
-// API documentation endpoint
-app.get(`${apiPrefix}/docs`, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Student Hub API Documentation',
-    version: '1.0.0',
-    endpoints: {
-      authentication: {
-        'POST /api/auth/register': 'Register a new user',
-        'POST /api/auth/login': 'Login user',
-        'POST /api/auth/refresh': 'Refresh access token',
-        'POST /api/auth/logout': 'Logout user',
-        'GET /api/auth/me': 'Get current user profile',
-        'PUT /api/auth/profile': 'Update user profile',
-        'POST /api/auth/change-password': 'Change password',
-        'POST /api/auth/forgot-password': 'Request password reset',
-        'POST /api/auth/reset-password': 'Reset password',
-      },
-      posts: {
-        'GET /api/posts': 'Get all posts with filtering and pagination',
-        'GET /api/posts/:id': 'Get a single post',
-        'POST /api/posts': 'Create a new post',
-        'PUT /api/posts/:id': 'Update a post',
-        'DELETE /api/posts/:id': 'Delete a post',
-        'POST /api/posts/:id/vote': 'Vote on a post',
-        'POST /api/posts/:id/bookmark': 'Bookmark/unbookmark a post',
-      },
-      replies: {
-        'GET /api/posts/:postId/replies': 'Get all replies for a post',
-        'POST /api/posts/:postId/replies': 'Create a new reply',
-        'PUT /api/posts/:postId/replies/:replyId': 'Update a reply',
-        'DELETE /api/posts/:postId/replies/:replyId': 'Delete a reply',
-        'POST /api/posts/:postId/replies/:replyId/vote': 'Vote on a reply',
-        'POST /api/posts/:postId/replies/:replyId/accept': 'Accept a reply as answer',
-      },
-      chats: {
-        'GET /api/chats': 'Get user\'s joined chats',
-        'GET /api/chats/discover': 'Discover available chats to join',
-        'POST /api/chats': 'Create a new chat',
-        'GET /api/chats/:id': 'Get chat details',
-        'POST /api/chats/:id/join': 'Join a chat',
-        'POST /api/chats/:id/leave': 'Leave a chat',
-      },
-      messages: {
-        'GET /api/chats/:chatId/messages': 'Get messages for a chat',
-        'POST /api/chats/:chatId/messages': 'Send a message',
-        'PUT /api/chats/:chatId/messages/:messageId': 'Edit a message',
-        'DELETE /api/chats/:chatId/messages/:messageId': 'Delete a message',
-        'POST /api/chats/:chatId/messages/mark-read': 'Mark messages as read',
-      },
-      analytics: {
-        'GET /api/analytics/visa': 'Get visa analytics and statistics',
-        'GET /api/analytics/visa/cases': 'Get user\'s visa cases',
-        'POST /api/analytics/visa/cases': 'Create a new visa case',
-        'PUT /api/analytics/visa/cases/:id': 'Update a visa case',
-        'GET /api/analytics/visa/cases/:id/timeline': 'Get visa case timeline',
-        'DELETE /api/analytics/visa/cases/:id': 'Delete a visa case',
-      },
-    },
-  });
-});
-
 // 404 handler for API routes
 app.use(`${apiPrefix}/*`, (req, res) => {
   res.status(404).json({
     success: false,
     message: 'API endpoint not found',
-    availableEndpoints: `${req.protocol}://${req.get('host')}${apiPrefix}/docs`,
+    documentation: `${req.protocol}://${req.get('host')}/api-docs`,
+    swagger: `${req.protocol}://${req.get('host')}/api-docs`,
   });
 });
 
@@ -186,79 +129,32 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'Welcome to Student Hub API',
-    documentation: `${req.protocol}://${req.get('host')}${apiPrefix}/docs`,
-    health: `${req.protocol}://${req.get('host')}/health`,
     version: '1.0.0',
+    documentation: {
+      swagger: `${req.protocol}://${req.get('host')}/api-docs`,
+      interactive: `${req.protocol}://${req.get('host')}/api-docs`,
+      description: 'Interactive API documentation with Swagger UI'
+    },
+    health: `${req.protocol}://${req.get('host')}/health`,
+    endpoints: {
+      authentication: `${req.protocol}://${req.get('host')}/api-docs#/Authentication`,
+      posts: `${req.protocol}://${req.get('host')}/api-docs#/Posts`,
+      replies: `${req.protocol}://${req.get('host')}/api-docs#/Replies`,
+      chats: `${req.protocol}://${req.get('host')}/api-docs#/Chats`,
+      messages: `${req.protocol}://${req.get('host')}/api-docs#/Messages`,
+      analytics: `${req.protocol}://${req.get('host')}/api-docs#/Analytics`
+    },
+    apiRoutes: {
+      auth: `${req.protocol}://${req.get('host')}/api/auth`,
+      posts: `${req.protocol}://${req.get('host')}/api/posts`,
+      chats: `${req.protocol}://${req.get('host')}/api/chats`,
+      analytics: `${req.protocol}://${req.get('host')}/api/analytics/visa`
+    }
   });
 });
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
-// Graceful shutdown function
-const gracefulShutdown = async (signal) => {
-  logger.info(`Received ${signal}. Starting graceful shutdown...`);
-  
-  try {
-    // Close database connection
-    const { mongoose } = require('./src/config/database');
-    await mongoose.connection.close();
-    logger.info('Database connection closed');
-    
-    // Close Redis connection
-    const { disconnectRedis } = require('./src/config/redis');
-    await disconnectRedis();
-    
-    logger.info('Graceful shutdown completed');
-    process.exit(0);
-  } catch (error) {
-    logger.error('Error during graceful shutdown:', error);
-    process.exit(1);
-  }
-};
-
-// Handle shutdown signals
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Handle uncaught exceptions and rejections
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
-
-// Start server
-const PORT = process.env.PORT || 5000;
-
-const startServer = async () => {
-  try {
-    // Connect to MongoDB
-    await connectDB();
-    logger.info('MongoDB connection established successfully');
-
-    // Connect to Redis
-    await connectRedis();
-
-    // Start the server
-    app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`API Documentation: http://localhost:${PORT}${apiPrefix}/docs`);
-    });
-  } catch (error) {
-    logger.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
-
-// Only start server if this file is run directly
-if (require.main === module) {
-  startServer();
-}
-
+// Export the Express app (don't start server here)
 module.exports = app;

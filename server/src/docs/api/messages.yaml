@@ -1,0 +1,264 @@
+openapi: 3.0.0
+paths:
+  /api/chats/{chatId}/messages:
+    get:
+      summary: Get messages in a chat
+      description: Retrieve messages from a specific chat room with pagination
+      tags:
+        - Messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Number of messages per page
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages before this timestamp
+        - name: after
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages after this timestamp
+      responses:
+        '200':
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      messages:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Message'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Send a message
+      description: Send a new message to a chat room
+      tags:
+        - Messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCreate'
+      responses:
+        '201':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Message sent successfully
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/chats/{chatId}/messages/{id}:
+    put:
+      summary: Edit a message
+      description: Edit an existing message (only by sender, within time limit)
+      tags:
+        - Messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Message ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageUpdate'
+      responses:
+        '200':
+          description: Message updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Message updated successfully
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    delete:
+      summary: Delete a message
+      description: Delete a message (soft delete, only by sender or admin)
+      tags:
+        - Messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Message ID
+      responses:
+        '200':
+          description: Message deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Message deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/chats/{chatId}/messages/{id}/read:
+    post:
+      summary: Mark message as read
+      description: Mark a message as read by the current user
+      tags:
+        - Messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Message ID
+      responses:
+        '200':
+          description: Message marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Message marked as read
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'

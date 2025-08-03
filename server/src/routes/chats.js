@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
-const { Chat, User, ChatMember, Message, FileUpload } = require('../models');
+const { Chat, User, ChatMember, Message } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { 
   validateCreateChat, 
@@ -14,11 +13,6 @@ const { chatLimiter } = require('../middleware/rateLimiter');
 const uploadConfigs = require('../middleware/upload');
 const logger = require('../config/logger');
 
-/**
- * @route   GET /api/chats
- * @desc    Get user's joined chats
- * @access  Private
- */
 router.get('/', authenticateToken, validatePagination, async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
@@ -71,8 +65,7 @@ router.get('/', authenticateToken, validatePagination, async (req, res) => {
       chat.lastMessage = chat.messages[0] || null;
       delete chat.messages;
       
-      // Calculate unread count (simplified)
-      chat.unreadCount = 0; // TODO: Implement proper unread count logic
+      chat.unreadCount = 0;
       
       return chat;
     });
@@ -99,11 +92,6 @@ router.get('/', authenticateToken, validatePagination, async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/chats/discover
- * @desc    Discover available chats to join
- * @access  Private
- */
 router.get('/discover', authenticateToken, validatePagination, validateSearch, async (req, res) => {
   try {
     const {
@@ -183,11 +171,6 @@ router.get('/discover', authenticateToken, validatePagination, validateSearch, a
   }
 });
 
-/**
- * @route   POST /api/chats
- * @desc    Create a new chat
- * @access  Private
- */
 router.post('/', authenticateToken, validateCreateChat, async (req, res) => {
   try {
     const {
@@ -250,11 +233,6 @@ router.post('/', authenticateToken, validateCreateChat, async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/chats/:id
- * @desc    Get chat details
- * @access  Private (Members only)
- */
 router.get('/:id', authenticateToken, validateUUID('id'), async (req, res) => {
   try {
     // Check if user is a member of the chat
@@ -324,11 +302,6 @@ router.get('/:id', authenticateToken, validateUUID('id'), async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/chats/:id/join
- * @desc    Join a chat
- * @access  Private
- */
 router.post('/:id/join', authenticateToken, validateUUID('id'), async (req, res) => {
   try {
     const chat = await Chat.findOne({
@@ -409,11 +382,6 @@ router.post('/:id/join', authenticateToken, validateUUID('id'), async (req, res)
   }
 });
 
-/**
- * @route   POST /api/chats/:id/leave
- * @desc    Leave a chat
- * @access  Private
- */
 router.post('/:id/leave', authenticateToken, validateUUID('id'), async (req, res) => {
   try {
     const membership = await ChatMember.findOne({

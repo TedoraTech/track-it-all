@@ -1,4 +1,4 @@
-const { University, Tag, User, Chat, Post } = require('../models');
+const { University, Tag, User, Chat, ChatMember, Post } = require('../models');
 const bcrypt = require('bcryptjs');
 const logger = require('../config/logger');
 
@@ -86,10 +86,11 @@ const seedUniversities = async () => {
   ];
 
   for (const university of universities) {
-    await University.findOrCreate({
-      where: { code: university.code },
-      defaults: university,
-    });
+    await University.findOneAndUpdate(
+      { code: university.code },
+      university,
+      { upsert: true, new: true }
+    );
   }
 
   logger.info('Universities seeded successfully');
@@ -120,23 +121,30 @@ const seedTags = async () => {
   ];
 
   for (const tag of tags) {
-    await Tag.findOrCreate({
-      where: { name: tag.name },
-      defaults: tag,
-    });
+    await Tag.findOneAndUpdate(
+      { name: tag.name },
+      tag,
+      { upsert: true, new: true }
+    );
   }
 
   logger.info('Tags seeded successfully');
 };
 
 const seedUsers = async () => {
+  // Get university references
+  const mit = await University.findOne({ code: 'MIT' });
+  const stanford = await University.findOne({ code: 'STANFORD' });
+  const harvard = await University.findOne({ code: 'HARVARD' });
+  const toronto = await University.findOne({ code: 'UTORONTO' });
+
   const users = [
     {
       firstName: 'John',
       lastName: 'Doe',
       email: 'john.doe@example.com',
       password: await bcrypt.hash('password123', 12),
-      university: 'Massachusetts Institute of Technology',
+      university: mit?._id,
       year: 2024,
       semester: 'Fall',
       major: 'Computer Science',
@@ -150,7 +158,7 @@ const seedUsers = async () => {
       lastName: 'Smith',
       email: 'jane.smith@example.com',
       password: await bcrypt.hash('password123', 12),
-      university: 'Stanford University',
+      university: stanford?._id,
       year: 2023,
       semester: 'Fall',
       major: 'Data Science',
@@ -164,7 +172,7 @@ const seedUsers = async () => {
       lastName: 'Johnson',
       email: 'alice.johnson@example.com',
       password: await bcrypt.hash('password123', 12),
-      university: 'Harvard University',
+      university: harvard?._id,
       year: 2025,
       semester: 'Fall',
       major: 'Biology',
@@ -178,7 +186,7 @@ const seedUsers = async () => {
       lastName: 'Wilson',
       email: 'bob.wilson@example.com',
       password: await bcrypt.hash('password123', 12),
-      university: 'University of Toronto',
+      university: toronto?._id,
       year: 2024,
       semester: 'Fall',
       major: 'Engineering',
@@ -192,7 +200,7 @@ const seedUsers = async () => {
       lastName: 'User',
       email: 'admin@studenthub.com',
       password: await bcrypt.hash('admin123', 12),
-      university: 'Student Hub',
+      university: null, // Admin doesn't need university
       bio: 'Platform administrator ensuring a great experience for all students.',
       isVerified: true,
       role: 'admin',
@@ -200,10 +208,10 @@ const seedUsers = async () => {
   ];
 
   for (const user of users) {
-    await User.findOrCreate({
-      where: { email: user.email },
-      defaults: user,
-    });
+    const existingUser = await User.findOne({ email: user.email });
+    if (!existingUser) {
+      await User.create(user);
+    }
   }
 
   logger.info('Users seeded successfully');
@@ -211,7 +219,7 @@ const seedUsers = async () => {
 
 const seedChats = async () => {
   // Get some users for chat creation
-  const users = await User.findAll({ limit: 5 });
+  const users = await User.find().limit(5);
   
   if (users.length === 0) {
     logger.warn('No users found, skipping chat seeding');
@@ -233,7 +241,7 @@ const seedChats = async () => {
         'Keep discussions relevant to CS topics',
         'Help others when you can',
       ],
-      createdBy: users[0].id,
+      createdBy: users[0]._id,
     },
     {
       name: 'International Students - Visa Help',
@@ -246,7 +254,7 @@ const seedChats = async () => {
         'Protect personal information',
         'No legal advice - seek professional help when needed',
       ],
-      createdBy: users[1].id,
+      createdBy: users[1]._id,
     },
     {
       name: 'Data Science Career Network',
@@ -259,7 +267,7 @@ const seedChats = async () => {
         'Provide constructive feedback',
         'No discrimination of any kind',
       ],
-      createdBy: users[2].id,
+      createdBy: users[2]._id,
     },
     {
       name: 'Research Opportunities Hub',
@@ -272,7 +280,7 @@ const seedChats = async () => {
         'Encourage collaboration',
         'Share resources generously',
       ],
-      createdBy: users[3].id,
+      createdBy: users[3]._id,
     },
     {
       name: 'Student Life & Events',
@@ -285,23 +293,31 @@ const seedChats = async () => {
         'Be inclusive and welcoming',
         'Have fun and make friends!',
       ],
-      createdBy: users[0].id,
+      createdBy: users[0]._id,
     },
   ];
 
   for (const chat of chats) {
-    const [createdChat] = await Chat.findOrCreate({
-      where: { name: chat.name },
-      defaults: chat,
-    });
+    const existingChat = await Chat.findOne({ name: chat.name });
+    if (!existingChat) {
+      const createdChat = await Chat.create(chat);
+      
+      // Add creator as owner through ChatMember
+      await ChatMember.create({
+        chatId: createdChat._id,
+        userId: chat.createdBy,
+        role: 'owner'
+      });
 
-    // Add creator as owner
-    await createdChat.addMember(chat.createdBy, { role: 'owner' });
-
-    // Add a few other users as members
-    const otherUsers = users.filter(u => u.id !== chat.createdBy).slice(0, 2);
-    for (const user of otherUsers) {
-      await createdChat.addMember(user.id, { role: 'member' });
+      // Add a few other users as members
+      const otherUsers = users.filter(u => !u._id.equals(chat.createdBy)).slice(0, 2);
+      for (const user of otherUsers) {
+        await ChatMember.create({
+          chatId: createdChat._id,
+          userId: user._id,
+          role: 'member'
+        });
+      }
     }
   }
 
@@ -310,7 +326,7 @@ const seedChats = async () => {
 
 const seedPosts = async () => {
   // Get some users for post creation
-  const users = await User.findAll({ limit: 4 });
+  const users = await User.find({ role: 'student' }).limit(4);
   
   if (users.length === 0) {
     logger.warn('No users found, skipping post seeding');
@@ -338,7 +354,7 @@ const seedPosts = async () => {
 - GitHub repositories with implementations
 
 What resources have helped you the most? Any hidden gems I should know about?`,
-      authorId: users[0].id,
+      authorId: users[0]._id,
       category: 'Study Resources',
       university: 'Massachusetts Institute of Technology',
       semester: 'Fall',
@@ -373,7 +389,7 @@ What resources have helped you the most? Any hidden gems I should know about?`,
 - Know emergency contacts
 
 Remember, everyone is adjusting too! What tips would you add to this list?`,
-      authorId: users[1].id,
+      authorId: users[1]._id,
       category: 'Student Life',
       tags: ['International Students', 'Study Tips', 'Student Life'],
     },
@@ -404,7 +420,7 @@ Send your resume, transcript, and a brief cover letter explaining your interest 
 Deadline: November 30th, 2024
 
 Feel free to ask questions in the comments!`,
-      authorId: users[2].id,
+      authorId: users[2]._id,
       category: 'Research',
       university: 'Harvard University',
       tags: ['Research', 'AI', 'Healthcare', 'Opportunities'],
@@ -436,7 +452,7 @@ Feel free to ask questions in the comments!`,
 - Online collaboration between meetings
 
 Interested? Comment below with your availability and what you hope to get out of the study group!`,
-      authorId: users[3].id,
+      authorId: users[3]._id,
       category: 'Study Groups',
       university: 'University of Toronto',
       semester: 'Fall',
@@ -480,20 +496,20 @@ Interested? Comment below with your availability and what you hope to get out of
 - Follow up after interviews
 
 Happy to answer any questions about the internship search process or startup life!`,
-      authorId: users[0].id,
+      authorId: users[0]._id,
       category: 'Career Advice',
       tags: ['Internships', 'Career Advice', 'Tech', 'Startups'],
     },
   ];
 
   for (const post of posts) {
-    await Post.findOrCreate({
-      where: { title: post.title },
-      defaults: {
+    const existingPost = await Post.findOne({ title: post.title });
+    if (!existingPost) {
+      await Post.create({
         ...post,
         lastActivityAt: new Date(),
-      },
-    });
+      });
+    }
   }
 
   logger.info('Posts seeded successfully');

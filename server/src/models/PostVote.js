@@ -1,54 +1,76 @@
-module.exports = (sequelize, DataTypes) => {
-  const PostVote = sequelize.define('PostVote', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    voteType: {
-      type: DataTypes.ENUM('upvote', 'downvote'),
-      allowNull: false,
-    },
-    postId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'posts',
-        key: 'id',
-      },
-    },
-    userId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id',
-      },
-    },
-  }, {
-    tableName: 'post_votes',
-    indexes: [
-      {
-        fields: ['post_id', 'user_id'],
-        unique: true,
-      },
-      {
-        fields: ['user_id'],
-      },
-    ],
-  });
+const mongoose = require('mongoose');
 
-  PostVote.associate = (models) => {
-    PostVote.belongsTo(models.Post, {
-      foreignKey: 'postId',
-      as: 'post',
-    });
+const postVoteSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'User is required']
+  },
+  post: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post',
+    required: function() {
+      return !this.reply; // Required if reply is not set
+    }
+  },
+  reply: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PostReply',
+    required: function() {
+      return !this.post; // Required if post is not set
+    }
+  },
+  voteType: {
+    type: String,
+    enum: ['upvote', 'downvote'],
+    required: [true, 'Vote type is required']
+  }
+}, {
+  timestamps: true
+});
+
+// Compound indexes to ensure unique votes
+postVoteSchema.index({ user: 1, post: 1 }, { 
+  unique: true, 
+  partialFilterExpression: { post: { $exists: true } }
+});
+
+postVoteSchema.index({ user: 1, reply: 1 }, { 
+  unique: true, 
+  partialFilterExpression: { reply: { $exists: true } }
+});
+
+// Additional indexes
+postVoteSchema.index({ voteType: 1 });
+postVoteSchema.index({ createdAt: -1 });
+
+// Pre-save middleware to update vote counts
+postVoteSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    try {
+      const Model = this.post ? mongoose.model('Post') : mongoose.model('PostReply');
+      const targetId = this.post || this.reply;
+      const field = this.voteType === 'upvote' ? 'upvotes' : 'downvotes';
+      
+      await Model.findByIdAndUpdate(targetId, { $inc: { [field]: 1 } });
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
+
+// Post-remove middleware to update vote counts
+postVoteSchema.post('deleteOne', { document: true }, async function() {
+  try {
+    const Model = this.post ? mongoose.model('Post') : mongoose.model('PostReply');
+    const targetId = this.post || this.reply;
+    const field = this.voteType === 'upvote' ? 'upvotes' : 'downvotes';
     
-    PostVote.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'user',
-    });
-  };
+    await Model.findByIdAndUpdate(targetId, { $inc: { [field]: -1 } });
+  } catch (error) {
+    console.error('Error updating vote count:', error);
+  }
+});
 
-  return PostVote;
-};
+module.exports = mongoose.model('PostVote', postVoteSchema);

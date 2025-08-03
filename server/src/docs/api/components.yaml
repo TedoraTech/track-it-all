@@ -1,0 +1,656 @@
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        displayName:
+          type: string
+          example: "johndoe123"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        bio:
+          type: string
+          example: "Computer Science student interested in AI"
+        university:
+          type: string
+          example: "MIT"
+        semester:
+          type: string
+          example: "Fall 2024"
+        year:
+          type: string
+          example: "Senior"
+        visaStatus:
+          type: string
+          example: "F1"
+        phoneNumber:
+          type: string
+          example: "+1234567890"
+        profilePicture:
+          type: string
+          example: "avatars/user123.jpg"
+        isActive:
+          type: boolean
+          example: true
+        lastLoginAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserRegistration:
+      type: object
+      required:
+        - email
+        - password
+        - displayName
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john.doe@university.edu"
+        password:
+          type: string
+          minLength: 6
+          example: "securePassword123"
+        displayName:
+          type: string
+          example: "johndoe123"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        university:
+          type: string
+          example: "MIT"
+        semester:
+          type: string
+          example: "Fall 2024"
+        year:
+          type: string
+          example: "Senior"
+        visaStatus:
+          type: string
+          enum: ["F1", "J1", "H1B", "OPT", "CPT", "Other"]
+          example: "F1"
+
+    UserLogin:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john.doe@university.edu"
+        password:
+          type: string
+          example: "securePassword123"
+        rememberMe:
+          type: boolean
+          default: false
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          example: "johndoe123"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        bio:
+          type: string
+          example: "Updated bio"
+        university:
+          type: string
+          example: "MIT"
+        semester:
+          type: string
+          example: "Spring 2025"
+        year:
+          type: string
+          example: "Graduate"
+        visaStatus:
+          type: string
+          enum: ["F1", "J1", "H1B", "OPT", "CPT", "Other"]
+        phoneNumber:
+          type: string
+          example: "+1234567890"
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          example: "currentPassword123"
+        newPassword:
+          type: string
+          minLength: 6
+          example: "newSecurePassword456"
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john.doe@university.edu"
+
+    ResetPasswordRequest:
+      type: object
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+          example: "reset-token-string"
+        newPassword:
+          type: string
+          minLength: 6
+          example: "newSecurePassword789"
+
+    Post:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        title:
+          type: string
+          example: "Looking for F1 visa advice"
+        content:
+          type: string
+          example: "I need help with my visa application process..."
+        type:
+          type: string
+          enum: [question, discussion, announcement]
+          example: "question"
+        author:
+          $ref: '#/components/schemas/User'
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["visa", "F1", "immigration"]
+        attachments:
+          type: array
+          items:
+            type: string
+          example: ["uploads/posts/document.pdf"]
+        upvotes:
+          type: integer
+          example: 15
+        downvotes:
+          type: integer
+          example: 2
+        bookmarks:
+          type: integer
+          example: 8
+        replyCount:
+          type: integer
+          example: 5
+        isBookmarked:
+          type: boolean
+          example: false
+        userVote:
+          type: string
+          enum: [upvote, downvote]
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PostCreate:
+      type: object
+      required:
+        - title
+        - content
+        - category
+      properties:
+        title:
+          type: string
+          example: "Need help with F1 visa application"
+          maxLength: 200
+        content:
+          type: string
+          example: "I am applying for F1 visa and need guidance on required documents..."
+          maxLength: 10000
+        category:
+          type: string
+          enum: [academic, career, housing, social, visa, general]
+          example: "visa"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["f1-visa", "documents", "help"]
+          maxItems: 10
+        attachments:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: File attachments for the post
+          maxItems: 5
+        anonymous:
+          type: boolean
+          default: false
+          description: Whether to post anonymously
+
+    PostUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 10000
+        category:
+          type: string
+          enum: [academic, career, housing, social, visa, general]
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        isResolved:
+          type: boolean
+          description: Mark post as resolved (for questions)
+
+    VoteRequest:
+      type: object
+      required:
+        - voteType
+      properties:
+        voteType:
+          type: string
+          enum: [upvote, downvote]
+          example: "upvote"
+
+    Chat:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        name:
+          type: string
+          example: "F1 Visa Discussion"
+        description:
+          type: string
+          example: "Chat room for F1 visa related discussions"
+        type:
+          type: string
+          enum: [public, private]
+          example: "public"
+        createdBy:
+          $ref: '#/components/schemas/User'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        memberCount:
+          type: integer
+          example: 25
+        lastMessage:
+          $ref: '#/components/schemas/Message'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ChatCreate:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          example: "F1 Visa Help Group"
+          maxLength: 100
+          description: Name of the chat room
+        description:
+          type: string
+          example: "Discussion group for F1 visa related questions and help"
+          maxLength: 500
+          description: Description of the chat room purpose
+        type:
+          type: string
+          enum: [public, private]
+          example: "public"
+          description: Type of chat room (public or private)
+        category:
+          type: string
+          example: "visa"
+          maxLength: 50
+          description: Category or topic of the chat room
+        maxMembers:
+          type: integer
+          minimum: 2
+          maximum: 1000
+          example: 100
+          description: Maximum number of members allowed
+
+    Message:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        content:
+          type: string
+          example: "Has anyone applied for F1 visa recently?"
+        sender:
+          $ref: '#/components/schemas/User'
+        chat:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        type:
+          type: string
+          enum: [text, image, file]
+          example: "text"
+        attachments:
+          type: array
+          items:
+            type: string
+          example: ["uploads/messages/image.jpg"]
+        readBy:
+          type: array
+          items:
+            type: object
+            properties:
+              user:
+                type: string
+              readAt:
+                type: string
+                format: date-time
+        edited:
+          type: boolean
+          example: false
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MessageCreate:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          example: "Hello everyone! I have a question about F1 visa..."
+          maxLength: 5000
+          description: Message content
+        type:
+          type: string
+          enum: [text, image, file]
+          default: text
+          description: Type of message
+        replyTo:
+          type: string
+          description: ID of message being replied to
+        attachments:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: File attachments for the message
+          maxItems: 3
+
+    MessageUpdate:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          example: "Updated message content..."
+          maxLength: 5000
+          description: Updated message content
+
+    Reply:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        content:
+          type: string
+          example: "Here's my experience with F1 visa application..."
+        author:
+          $ref: '#/components/schemas/User'
+        post:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        parentReply:
+          type: string
+          nullable: true
+          example: "507f1f77bcf86cd799439012"
+        upvotes:
+          type: integer
+          example: 8
+        downvotes:
+          type: integer
+          example: 1
+        userVote:
+          type: string
+          enum: [upvote, downvote]
+          nullable: true
+        isAccepted:
+          type: boolean
+          example: false
+        nestedReplies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reply'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VisaCase:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        visaType:
+          type: string
+          enum: [F1, J1, H1B, OPT, CPT, Other]
+          example: "F1"
+        status:
+          type: string
+          enum: [submitted, in_review, approved, rejected, pending]
+          example: "submitted"
+        applicationDate:
+          type: string
+          format: date
+          example: "2024-01-15"
+        approvalDate:
+          type: string
+          format: date
+          nullable: true
+        processingCenter:
+          type: string
+          example: "National Benefits Center"
+        caseNumber:
+          type: string
+          example: "MSC2190000001"
+        priority:
+          type: string
+          enum: [normal, premium]
+          example: "normal"
+        description:
+          type: string
+          example: "F1 visa application for Master's program"
+        user:
+          $ref: '#/components/schemas/User'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 150
+        pages:
+          type: integer
+          example: 8
+        hasNext:
+          type: boolean
+          example: true
+        hasPrev:
+          type: boolean
+          example: false
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Authentication required"
+
+    ValidationError:
+      description: Invalid input data
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Validation failed"
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Resource not found"
+
+    ForbiddenError:
+      description: Access forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Access forbidden"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Internal server error"

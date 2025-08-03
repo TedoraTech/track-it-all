@@ -1,0 +1,356 @@
+openapi: 3.0.0
+paths:
+  /api/posts:
+    get:
+      summary: Get all posts with filtering and pagination
+      description: Retrieve all posts with advanced filtering, search, and pagination options
+      tags:
+        - Posts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of posts per page
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [academic, career, housing, social, visa, general]
+          description: Filter by post category
+        - name: university
+          in: query
+          schema:
+            type: string
+          description: Filter by university
+        - name: semester
+          in: query
+          schema:
+            type: string
+          description: Filter by semester
+        - name: year
+          in: query
+          schema:
+            type: string
+          description: Filter by academic year
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search query for title and content
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, updatedAt, votes, views]
+            default: createdAt
+          description: Sort posts by field
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+          description: Sort order
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+          description: Filter featured posts only
+      responses:
+        '200':
+          description: Posts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      posts:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Post'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a new post
+      description: Create a new community post with optional file attachments and tags
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PostCreate'
+      responses:
+        '201':
+          description: Post created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Post created successfully
+                  data:
+                    type: object
+                    properties:
+                      post:
+                        $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/posts/{id}:
+    get:
+      summary: Get a single post by ID
+      description: Retrieve detailed information about a specific post
+      tags:
+        - Posts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+      responses:
+        '200':
+          description: Post retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      post:
+                        $ref: '#/components/schemas/Post'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      summary: Update a post
+      description: Update an existing post (author or admin only)
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostUpdate'
+      responses:
+        '200':
+          description: Post updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Post updated successfully
+                  data:
+                    type: object
+                    properties:
+                      post:
+                        $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    delete:
+      summary: Delete a post
+      description: Delete a post (soft delete - author or admin only)
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID to delete
+      responses:
+        '200':
+          description: Post deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Post deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/posts/{id}/vote:
+    post:
+      summary: Vote on a post
+      description: Upvote or downvote a post. Can change or remove existing votes.
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID to vote on
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteRequest'
+      responses:
+        '200':
+          description: Vote processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Vote added
+                  data:
+                    type: object
+                    properties:
+                      action:
+                        type: string
+                        enum: [added, removed, updated]
+                        description: Action performed on the vote
+                      voteType:
+                        type: string
+                        enum: [upvote, downvote]
+                        description: Type of vote
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/posts/{id}/bookmark:
+    post:
+      summary: Toggle bookmark status for a post
+      description: Add or remove a post from user's bookmarks
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID to bookmark/unbookmark
+      responses:
+        '200':
+          description: Bookmark status toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Bookmark added
+                  data:
+                    type: object
+                    properties:
+                      action:
+                        type: string
+                        enum: [added, removed]
+                        description: Action performed on bookmark
+                        example: added
+                      bookmarked:
+                        type: boolean
+                        description: Current bookmark status
+                        example: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'

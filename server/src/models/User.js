@@ -1,231 +1,215 @@
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+const userSchema = new mongoose.Schema({
+  firstName: {
+    type: String,
+    required: [true, 'First name is required'],
+    trim: true,
+    maxlength: [50, 'First name cannot be longer than 50 characters']
+  },
+  lastName: {
+    type: String,
+    required: [true, 'Last name is required'],
+    trim: true,
+    maxlength: [50, 'Last name cannot be longer than 50 characters']
+  },
+  email: {
+    type: String,
+    required: [true, 'Email is required'],
+    unique: true,
+    lowercase: true,
+    trim: true,
+    match: [
+      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+      'Please provide a valid email'
+    ]
+  },
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: [6, 'Password must be at least 6 characters'],
+    select: false // Don't include password in queries by default
+  },
+  avatar: {
+    type: String,
+    default: null
+  },
+  bio: {
+    type: String,
+    maxlength: [500, 'Bio cannot be longer than 500 characters']
+  },
+  university: {
+    type: String,
+    trim: true
+  },
+  year: {
+    type: Number,
+    min: [2020, 'Year must be 2020 or later'],
+    max: [2030, 'Year must be 2030 or earlier']
+  },
+  semester: {
+    type: String,
+    enum: ['Spring', 'Summer', 'Fall', 'Winter']
+  },
+  major: {
+    type: String,
+    trim: true
+  },
+  interests: [{
+    type: String,
+    trim: true
+  }],
+  location: {
+    type: String,
+    trim: true
+  },
+  website: {
+    type: String,
+    trim: true
+  },
+  socialLinks: {
+    linkedin: String,
+    twitter: String,
+    github: String,
+    instagram: String
+  },
+  status: {
+    type: String,
+    enum: ['online', 'offline', 'away', 'busy'],
+    default: 'offline'
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  },
+  refreshToken: {
+    type: String,
+    select: false
+  },
+  passwordResetToken: {
+    type: String,
+    select: false
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false
+  },
+  emailVerificationToken: {
+    type: String,
+    select: false
+  },
+  emailVerificationExpires: {
+    type: Date,
+    select: false
+  },
+  role: {
+    type: String,
+    enum: ['student', 'admin', 'moderator'],
+    default: 'student'
+  },
+  settings: {
+    notifications: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+      chat: { type: Boolean, default: true }
     },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true,
-      },
-      set(value) {
-        this.setDataValue('email', value.toLowerCase());
-      },
+    privacy: {
+      showEmail: { type: Boolean, default: false },
+      showProfile: { type: Boolean, default: true }
     },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: true, // Allow null for OAuth users
-      validate: {
-        len: [6, 100],
-      },
-    },
-    displayName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [2, 50],
-      },
-    },
-    firstName: {
-      type: DataTypes.STRING,
-      validate: {
-        len: [1, 30],
-      },
-    },
-    lastName: {
-      type: DataTypes.STRING,
-      validate: {
-        len: [1, 30],
-      },
-    },
-    avatar: {
-      type: DataTypes.STRING,
-      validate: {
-        isUrl: true,
-      },
-    },
-    bio: {
-      type: DataTypes.TEXT,
-      validate: {
-        len: [0, 500],
-      },
-    },
-    university: {
-      type: DataTypes.STRING,
-      validate: {
-        len: [0, 100],
-      },
-    },
-    semester: {
-      type: DataTypes.ENUM('Fall', 'Spring', 'Summer'),
-    },
-    year: {
-      type: DataTypes.STRING,
-      validate: {
-        is: /^\\d{4}$/,
-      },
-    },
-    visaStatus: {
-      type: DataTypes.ENUM('F-1', 'H-1B', 'OPT', 'STEM-OPT', 'CPT', 'J-1', 'L-1', 'O-1', 'Other'),
-    },
-    phoneNumber: {
-      type: DataTypes.STRING,
-      validate: {
-        is: /^[+]?[1-9]\\d{1,14}$/,
-      },
-    },
-    isEmailVerified: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-    },
-    role: {
-      type: DataTypes.ENUM('user', 'moderator', 'admin'),
-      defaultValue: 'user',
-    },
-    reputation: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    lastLoginAt: {
-      type: DataTypes.DATE,
-    },
-    emailVerificationToken: {
-      type: DataTypes.STRING,
-    },
-    emailVerificationExpires: {
-      type: DataTypes.DATE,
-    },
-    passwordResetToken: {
-      type: DataTypes.STRING,
-    },
-    passwordResetExpires: {
-      type: DataTypes.DATE,
-    },
-    refreshToken: {
-      type: DataTypes.TEXT,
-    },
-    googleId: {
-      type: DataTypes.STRING,
-      unique: true,
-    },
-    preferences: {
-      type: DataTypes.JSONB,
-      defaultValue: {
-        emailNotifications: true,
-        pushNotifications: true,
-        theme: 'light',
-        language: 'en',
-      },
-    },
-  }, {
-    tableName: 'users',
-    indexes: [
-      {
-        fields: ['email'],
-        unique: true,
-      },
-      {
-        fields: ['university'],
-      },
-      {
-        fields: ['visa_status'],
-      },
-      {
-        fields: ['google_id'],
-        unique: true,
-        where: {
-          google_id: {
-            [sequelize.Sequelize.Op.ne]: null,
-          },
-        },
-      },
-    ],
-    hooks: {
-      beforeCreate: async (user) => {
-        if (user.password) {
-          user.password = await bcrypt.hash(user.password, 12);
-        }
-      },
-      beforeUpdate: async (user) => {
-        if (user.changed('password') && user.password) {
-          user.password = await bcrypt.hash(user.password, 12);
-        }
-      },
-    },
-  });
+    theme: {
+      type: String,
+      enum: ['light', 'dark', 'system'],
+      default: 'system'
+    }
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-  User.prototype.validatePassword = async function(password) {
-    if (!this.password) return false;
-    return await bcrypt.compare(password, this.password);
-  };
+// Virtual for full name
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`;
+});
 
-  User.prototype.toJSON = function() {
-    const values = { ...this.get() };
-    delete values.password;
-    delete values.refreshToken;
-    delete values.emailVerificationToken;
-    delete values.passwordResetToken;
-    return values;
-  };
+// Index for better query performance
+// Note: email index is automatically created due to unique: true
+userSchema.index({ university: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ isActive: 1 });
+userSchema.index({ role: 1 });
 
-  User.associate = (models) => {
-    User.hasMany(models.Post, {
-      foreignKey: 'userId',
-      as: 'posts',
-    });
-    
-    User.hasMany(models.PostReply, {
-      foreignKey: 'userId',
-      as: 'replies',
-    });
-    
-    User.hasMany(models.PostVote, {
-      foreignKey: 'userId',
-      as: 'postVotes',
-    });
-    
-    User.hasMany(models.ReplyVote, {
-      foreignKey: 'userId',
-      as: 'replyVotes',
-    });
-    
-    User.hasMany(models.ChatMember, {
-      foreignKey: 'userId',
-      as: 'chatMemberships',
-    });
-    
-    User.hasMany(models.Message, {
-      foreignKey: 'userId',
-      as: 'messages',
-    });
-    
-    User.hasMany(models.VisaCase, {
-      foreignKey: 'userId',
-      as: 'visaCases',
-    });
-    
-    User.hasMany(models.Bookmark, {
-      foreignKey: 'userId',
-      as: 'bookmarks',
-    });
-    
-    User.belongsToMany(models.Chat, {
-      through: models.ChatMember,
-      foreignKey: 'userId',
-      otherKey: 'chatId',
-      as: 'chats',
-    });
-  };
+// Pre-save middleware to hash password
+userSchema.pre('save', async function(next) {
+  // Only hash the password if it has been modified (or is new)
+  if (!this.isModified('password')) return next();
 
-  return User;
+  try {
+    // Hash password with cost of 12
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Instance method to check password
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw error;
+  }
 };
+
+// Instance method to generate password reset token
+userSchema.methods.createPasswordResetToken = function() {
+  const resetToken = require('crypto').randomBytes(32).toString('hex');
+  
+  this.passwordResetToken = require('crypto')
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  
+  return resetToken;
+};
+
+// Instance method to generate email verification token
+userSchema.methods.createEmailVerificationToken = function() {
+  const verifyToken = require('crypto').randomBytes(32).toString('hex');
+  
+  this.emailVerificationToken = require('crypto')
+    .createHash('sha256')
+    .update(verifyToken)
+    .digest('hex');
+  
+  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  
+  return verifyToken;
+};
+
+// Static method to find by email
+userSchema.statics.findByEmail = function(email) {
+  return this.findOne({ email: email.toLowerCase() });
+};
+
+// Static method to find active users
+userSchema.statics.findActive = function() {
+  return this.find({ isActive: true });
+};
+
+module.exports = mongoose.model('User', userSchema);

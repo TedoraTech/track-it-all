@@ -1,0 +1,285 @@
+openapi: 3.0.0
+paths:
+  /api/chats:
+    get:
+      summary: Get all chats
+      description: Retrieve all available chat rooms with pagination and filtering
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of chats per page
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [public, private]
+          description: Filter by chat type
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by chat category
+      responses:
+        '200':
+          description: Chats retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      chats:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Chat'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a new chat room
+      description: Create a new chat room for community discussions
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCreate'
+      responses:
+        '201':
+          description: Chat created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Chat created successfully
+                  data:
+                    type: object
+                    properties:
+                      chat:
+                        $ref: '#/components/schemas/Chat'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/chats/{id}:
+    get:
+      summary: Get chat details
+      description: Retrieve detailed information about a specific chat room
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID
+      responses:
+        '200':
+          description: Chat details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      chat:
+                        $ref: '#/components/schemas/Chat'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/chats/{id}/join:
+    post:
+      summary: Join a chat room
+      description: Join an existing chat room
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID to join
+      responses:
+        '200':
+          description: Successfully joined chat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Successfully joined chat
+        '400':
+          description: Cannot join chat (already member, chat full, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: You are already a member of this chat
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/chats/{id}/leave:
+    post:
+      summary: Leave a chat room
+      description: Leave an existing chat room
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID to leave
+      responses:
+        '200':
+          description: Successfully left chat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Successfully left chat
+        '400':
+          description: Cannot leave chat (not a member, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: You are not a member of this chat
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/chats/{id}/members:
+    get:
+      summary: Get chat members
+      description: Retrieve list of members in a chat room
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID
+      responses:
+        '200':
+          description: Chat members retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      members:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            user:
+                              $ref: '#/components/schemas/User'
+                            role:
+                              type: string
+                              enum: [admin, moderator, member]
+                            joinedAt:
+                              type: string
+                              format: date-time
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
